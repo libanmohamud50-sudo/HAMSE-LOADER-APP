@@ -1,201 +1,131 @@
 package com.hamse.tool;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
+import android.util.Log;
+import java.io.*;
+import java.nio.file.*;
+import java.util.*;
+import java.util.regex.*;
+import java.util.zip.*;
 
-public final class ToolManager {
+public class ToolManager {
 
-    private ToolManager() {}
+    private static final String TAG = "HamseToolManager";
 
-    public static byte[] xor(byte[] data, String key) {
-        if (data == null) {
-            throw new IllegalArgumentException("Data is empty");
+    // ── XOR decode ────────────────────────────────────────────────────────────
+    public String decodeXorScript(String filePath, int baseKey) {
+        try {
+            byte[] raw = Files.readAllBytes(Paths.get(filePath));
+            byte[] dec = new byte[raw.length];
+            for (int i = 0; i < raw.length; i++)
+                dec[i] = (byte)(raw[i] ^ ((baseKey + i) & 0xFF));
+            return new String(dec, "UTF-8");
+        } catch (IOException e) {
+            Log.e(TAG, "decodeXorScript: " + e.getMessage());
+            return "ERROR: " + e.getMessage();
         }
-
-        if (key == null || key.isEmpty()) {
-            throw new IllegalArgumentException("XOR key is empty");
-        }
-
-        byte[] k = key.getBytes(StandardCharsets.UTF_8);
-        byte[] out = new byte[data.length];
-
-        for (int i = 0; i < data.length; i++) {
-            out[i] = (byte) (data[i] ^ k[i % k.length]);
-        }
-
-        return out;
     }
 
-    public static List<String> scanUrls(File file) throws IOException {
-        byte[] bytes = Files.readAllBytes(file.toPath());
-
-        String text = new String(bytes, StandardCharsets.UTF_8);
-
-        Pattern p = Pattern.compile(
-                "https?://[^\\s\"'<>]+",
-                Pattern.CASE_INSENSITIVE
-        );
-
-        Matcher m = p.matcher(text);
-
-        Set<String> unique = new HashSet<>();
-        List<String> result = new ArrayList<>();
-
-        while (m.find()) {
-            String url = m.group();
-
-            while (url.endsWith(".") ||
-                    url.endsWith(",") ||
-                    url.endsWith(")") ||
-                    url.endsWith("]")) {
-                url = url.substring(0, url.length() - 1);
-            }
-
-            if (unique.add(url)) {
-                result.add(url);
-            }
-        }
-
-        return result;
+    // ── XOR encode ────────────────────────────────────────────────────────────
+    public byte[] encodeXorScript(String plaintext, int baseKey) {
+        try {
+            byte[] raw = plaintext.getBytes("UTF-8");
+            byte[] out = new byte[raw.length];
+            for (int i = 0; i < raw.length; i++)
+                out[i] = (byte)(raw[i] ^ ((baseKey + i) & 0xFF));
+            return out;
+        } catch (UnsupportedEncodingException e) { return new byte[0]; }
     }
 
-    public static int unpackZip(File zip, File outputDir)
-            throws IOException {
+    // ── URL pattern ───────────────────────────────────────────────────────────
+    private static final Pattern URL_PAT = Pattern.compile(
+        "https?://[\\w\\-._~:/?#\\[\\]@!$&'()*+,;=%]+",
+        Pattern.CASE_INSENSITIVE);
 
-        if (!outputDir.exists() && !outputDir.mkdirs()) {
-            throw new IOException("Cannot create output directory");
-        }
-
-        int count = 0;
-
-        try (ZipInputStream zis =
-                     new ZipInputStream(
-                             new BufferedInputStream(
-                                     new FileInputStream(zip)))) {
-
-            ZipEntry entry;
-
-            byte[] buffer = new byte[8192];
-
-            while ((entry = zis.getNextEntry()) != null) {
-
-                File target = new File(outputDir, entry.getName());
-
-                String root = outputDir.getCanonicalPath();
-                String targetPath = target.getCanonicalPath();
-
-                if (!targetPath.startsWith(root + File.separator)) {
-                    throw new IOException("Unsafe archive entry");
+    public List<String> scanUrlsFromApk(String apkPath) {
+        Set<String> found = new LinkedHashSet<>();
+        try (ZipFile zip = new ZipFile(apkPath)) {
+            Enumeration<? extends ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry e = entries.nextElement();
+                if (e.isDirectory()) continue;
+                String n = e.getName().toLowerCase();
+                if (n.endsWith(".xml") || n.endsWith(".json") || n.endsWith(".js")
+                    || n.endsWith(".html") || n.endsWith(".txt") || n.endsWith(".dex")
+                    || n.startsWith("assets/")) {
+                    try (InputStream is = zip.getInputStream(e)) {
+                        extractUrls(readStream(is), found);
+                    } catch (Exception ignored) {}
                 }
+            }
+        } catch (IOException e) { Log.e(TAG, "scanApk: " + e.getMessage()); }
+        return new ArrayList<>(found);
+    }
 
-                if (entry.isDirectory()) {
-                    if (!target.exists()) {
-                        target.mkdirs();
+    public List<String> scanUrlsFromFile(String filePath) {
+        Set<String> found = new LinkedHashSet<>();
+        try {
+            extractUrls(new String(Files.readAllBytes(Paths.get(filePath)), "UTF-8"), found);
+        } catch (IOException e) { Log.e(TAG, "scanFile: " + e.getMessage()); }
+        return new ArrayList<>(found);
+    }
+
+    private void extractUrls(String text, Set<String> out) {
+        Matcher m = URL_PAT.matcher(text);
+        while (m.find()) out.add(m.group());
+    }
+
+    private String readStream(InputStream is) throws IOException {
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        byte[] chunk = new byte[4096]; int n;
+        while ((n = is.read(chunk)) != -1) buf.write(chunk, 0, n);
+        return buf.toString("ISO-8859-1");
+    }
+
+    // ── PAK unpack ────────────────────────────────────────────────────────────
+    public boolean unpackPak(String pakPath, String outputDir) {
+        try {
+            new File(outputDir).mkdirs();
+            try (ZipInputStream zis = new ZipInputStream(new FileInputStream(pakPath))) {
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    File target = new File(outputDir, entry.getName());
+                    if (entry.isDirectory()) { target.mkdirs(); }
+                    else {
+                        target.getParentFile().mkdirs();
+                        try (FileOutputStream fos = new FileOutputStream(target)) {
+                            byte[] buf = new byte[8192]; int n;
+                            while ((n = zis.read(buf)) != -1) fos.write(buf, 0, n);
+                        }
                     }
-                    continue;
+                    zis.closeEntry();
                 }
-
-                File parent = target.getParentFile();
-
-                if (parent != null && !parent.exists()) {
-                    parent.mkdirs();
-                }
-
-                try (BufferedOutputStream bos =
-                             new BufferedOutputStream(
-                                     new FileOutputStream(target))) {
-
-                    int read;
-
-                    while ((read = zis.read(buffer)) != -1) {
-                        bos.write(buffer, 0, read);
-                    }
-                }
-
-                count++;
             }
-        }
-
-        return count;
+            return true;
+        } catch (IOException e) { Log.e(TAG, "unpack: " + e.getMessage()); return false; }
     }
 
-    public static int zipFolder(File folder, File output)
-            throws IOException {
-
-        if (!folder.isDirectory()) {
-            throw new IOException("Folder not found");
-        }
-
-        try (ZipOutputStream zos =
-                     new ZipOutputStream(
-                             new BufferedOutputStream(
-                                     new FileOutputStream(output)))) {
-
-            return addFolder(folder, folder, zos);
-        }
+    // ── PAK repack ────────────────────────────────────────────────────────────
+    public boolean repackPak(String sourceDir, String outputPakPath) {
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(outputPakPath))) {
+            zipDir(new File(sourceDir), new File(sourceDir), zos);
+            return true;
+        } catch (IOException e) { Log.e(TAG, "repack: " + e.getMessage()); return false; }
     }
 
-    private static int addFolder(
-            File root,
-            File current,
-            ZipOutputStream zos) throws IOException {
-
-        int count = 0;
-
-        File[] children = current.listFiles();
-
-        if (children == null) {
-            return 0;
-        }
-
-        for (File child : children) {
-
-            if (child.isDirectory()) {
-                count += addFolder(root, child, zos);
-                continue;
-            }
-
-            String relative =
-                    root.toURI()
-                            .relativize(child.toURI())
-                            .getPath();
-
-            ZipEntry entry = new ZipEntry(relative);
-            zos.putNextEntry(entry);
-
-            try (BufferedInputStream bis =
-                         new BufferedInputStream(
-                                 new FileInputStream(child))) {
-
-                byte[] buffer = new byte[8192];
-
-                int read;
-
-                while ((read = bis.read(buffer)) != -1) {
-                    zos.write(buffer, 0, read);
+    private void zipDir(File base, File cur, ZipOutputStream zos) throws IOException {
+        File[] files = cur.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory()) { zipDir(base, f, zos); }
+            else {
+                String rel = base.toURI().relativize(f.toURI()).getPath();
+                zos.putNextEntry(new ZipEntry(rel));
+                try (FileInputStream fis = new FileInputStream(f)) {
+                    byte[] buf = new byte[8192]; int n;
+                    while ((n = fis.read(buf)) != -1) zos.write(buf, 0, n);
                 }
+                zos.closeEntry();
             }
-
-            zos.closeEntry();
-
-            count++;
         }
-
-        return count;
     }
 }

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp" android:background="#000000">
+
+    <TextView android:text="Lua Tool" android:textColor="#00BCD4" android:textSize="20sp"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"/>
+
+    <EditText android:id="@+id/et_lua_path" android:hint="Lua file path"
+        android:textColorHint="#888" android:textColor="#FFF" android:background="#1A1A1A"
+        android:padding="10dp" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_marginBottom="8dp"/>
+
+    <EditText android:id="@+id/et_lua_key" android:hint="XOR base key hex (e.g. 5A)"
+        android:textColorHint="#888" android:textColor="#FFF" android:background="#1A1A1A"
+        android:padding="10dp" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:layout_marginBottom="16dp"/>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:layout_marginBottom="16dp">
+        <Button android:id="@+id/btn_decrypt" android:text="Decrypt (XOR)"
+            android:backgroundTint="#00BCD4" android:textColor="#000"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:layout_marginEnd="4dp"/>
+        <Button android:id="@+id/btn_encrypt" android:text="Encrypt (XOR)"
+            android:backgroundTint="#0097A7" android:textColor="#FFF"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:layout_marginStart="4dp"/>
+    </LinearLayout>
+
+    <ScrollView android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1">
+        <TextView android:id="@+id/tv_lua_output" android:text="Output..."
+            android:textColor="#AAAAAA" android:padding="8dp" android:background="#0D0D0D"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:fontFamily="monospace"/>
+    </ScrollView>
+</LinearLayout>

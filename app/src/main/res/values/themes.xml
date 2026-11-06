@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.HamseTool"
-        parent="Theme.Material3.Dark.NoActionBar">
-
-        <item name="android:fontFamily">sans</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#090B12</item>
-        <item name="android:navigationBarColor">#090B12</item>
-        <item name="android:windowActionModeOverlay">true</item>
-
-        <item name="colorPrimary">#7C5CFF</item>
-        <item name="colorSecondary">#00D4FF</item>
-
+    <style name="Theme.HamseTool" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="colorPrimary">#00BCD4</item>
+        <item name="colorPrimaryVariant">#0097A7</item>
+        <item name="colorOnPrimary">#000000</item>
+        <item name="colorSurface">#121212</item>
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#1A1A1A</item>
     </style>
-
 </resources>

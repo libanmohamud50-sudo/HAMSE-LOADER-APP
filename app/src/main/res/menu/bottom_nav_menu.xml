@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/pakFragment"
+        android:title="PAK"
+        android:icon="@android:drawable/ic_menu_save"/>
+    <item android:id="@+id/luaFragment"
+        android:title="Lua"
+        android:icon="@android:drawable/ic_menu_edit"/>
+    <item android:id="@+id/scanFragment"
+        android:title="Scan"
+        android:icon="@android:drawable/ic_menu_search"/>
+</menu>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/pakFragment">
+
+    <fragment android:id="@+id/pakFragment"
+        android:name="com.hamse.tool.ui.PakToolFragment"
+        android:label="PAK Tool"
+        tools:layout="@layout/fragment_pak"/>
+
+    <fragment android:id="@+id/luaFragment"
+        android:name="com.hamse.tool.ui.LuaToolFragment"
+        android:label="Lua Tool"
+        tools:layout="@layout/fragment_lua"/>
+
+    <fragment android:id="@+id/scanFragment"
+        android:name="com.hamse.tool.ui.ScanToolFragment"
+        android:label="Scan"
+        tools:layout="@layout/fragment_scan"/>
+
+</navigation>
